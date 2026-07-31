@@ -2,7 +2,6 @@ package com.airtv.receiver.media
 
 import android.media.MediaCodec
 import android.media.MediaFormat
-import android.os.Build
 import android.util.Log
 import android.view.Surface
 import java.nio.ByteBuffer
@@ -146,28 +145,30 @@ class VideoPipeline {
         val outputSurface = surface ?: return
         val config = codecConfig ?: return
         val mime = if (isH265) MediaFormat.MIMETYPE_VIDEO_HEVC else MediaFormat.MIMETYPE_VIDEO_AVC
-        try {
-            val format = MediaFormat.createVideoFormat(mime, sourceWidth, sourceHeight).apply {
-                setByteBuffer("csd-0", ByteBuffer.wrap(config))
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    setInteger(MediaFormat.KEY_LOW_LATENCY, 1)
+
+        // The low-latency hints are advisory; retry without them rather than losing video.
+        for (tuned in listOf(true, false)) {
+            var candidate: MediaCodec? = null
+            val created = try {
+                val format =
+                    VideoFormats.create(config, sourceWidth, sourceHeight, isH265, tuned)
+                MediaCodec.createDecoderByType(mime).also { candidate = it }.apply {
+                    configure(format, outputSurface, null, 0)
+                    start()
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    setInteger(MediaFormat.KEY_PRIORITY, 0) // realtime
-                    setInteger(MediaFormat.KEY_OPERATING_RATE, MAX_FPS)
-                }
+            } catch (e: Exception) {
+                Log.w(TAG, "decoder start failed for $mime (tuned=$tuned)", e)
+                candidate?.let { runCatching { it.release() } }
+                continue
             }
-            val created = MediaCodec.createDecoderByType(mime)
-            created.configure(format, outputSurface, null, 0)
-            created.start()
             codec = created
             needKeyFrame = true
             startDrainLocked(created)
-            Log.i(TAG, "decoder started: $mime ${sourceWidth}x$sourceHeight")
-        } catch (e: Exception) {
-            Log.e(TAG, "failed to start decoder for $mime", e)
-            codec = null
+            Log.i(TAG, "decoder started: $mime ${sourceWidth}x$sourceHeight tuned=$tuned")
+            return
         }
+        Log.e(TAG, "no usable decoder for $mime")
+        codec = null
     }
 
     private fun startDrainLocked(activeCodec: MediaCodec) {
@@ -217,7 +218,6 @@ class VideoPipeline {
         const val TAG = "VideoPipeline"
         const val DEFAULT_WIDTH = 1920
         const val DEFAULT_HEIGHT = 1080
-        const val MAX_FPS = 60
         const val INPUT_TIMEOUT_US = 100_000L
         const val OUTPUT_TIMEOUT_US = 20_000L
         const val DRAIN_JOIN_TIMEOUT_MS = 500L
