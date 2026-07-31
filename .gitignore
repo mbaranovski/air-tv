@@ -2,6 +2,8 @@ local.properties
 .gradle/
 build/
 app/build/
+app/.cxx/
+.native-deps-build/
 *.iml
 .idea/
 .DS_Store
