@@ -30,8 +30,12 @@ interface AirPlayCallbacks {
     fun onVideoResume()
     fun onVideoStop()
 
-    /** [contentType] is the AirPlay audio "ct": 2 = ALAC, 4 = AAC-LC, 8 = AAC-ELD. */
-    fun onAudioFormat(contentType: Int)
+    /**
+     * @param contentType the AirPlay audio "ct": 2 = ALAC, 4 = AAC-LC, 8 = AAC-ELD.
+     * @param usingScreen true for a screen-mirroring session, false for audio-only AirPlay
+     * (where the sender keeps the video on its own display).
+     */
+    fun onAudioFormat(contentType: Int, usingScreen: Boolean, isMedia: Boolean)
 
     fun onAudioData(data: ByteBuffer, length: Int, presentationTimeUs: Long)
     fun onAudioFlush()

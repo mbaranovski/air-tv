@@ -5,5 +5,9 @@
     <string name="status_starting">Starting…</string>
     <string name="status_ready">Ready. Choose “%1$s” from the AirPlay menu on your iPhone or iPad.</string>
     <string name="status_streaming">Mirroring from %1$s</string>
+    <string name="status_audio_only">Playing audio from %1$s</string>
+    <string name="status_audio_only_detail">Audio only — the video stays on your device. Use Screen Mirroring in Control Centre to show the picture here.</string>
+    <string name="status_audio_unsupported">%1$s is sending %2$s audio</string>
+    <string name="status_audio_unsupported_detail">This app cannot decode %1$s. Use Screen Mirroring in Control Centre instead — that sends video and audio.</string>
     <string name="hint">Swipe down from the top-right on your device → Screen Mirroring</string>
 </resources>

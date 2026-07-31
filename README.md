@@ -64,13 +64,31 @@ implementation can raise that cap. So: 4K-capable pipeline, 1080p-ish real-world
 of an iPhone screen. This app does not implement the separate AirPlay-video (HLS) path that
 apps like YouTube use to hand off a 4K stream directly.
 
+## Use Screen Mirroring, not the AirPlay button inside apps
+
+iOS has two different AirPlay protocols, and this app implements the mirroring one:
+
+| How you start it | What iOS sends | Result here |
+| --- | --- | --- |
+| Control Centre → **Screen Mirroring** | mirroring: H.264 + AAC-ELD | video and audio on the TV |
+| **AirPlay icon inside a video player** (Chrome, Safari, most apps) | audio-only ALAC — video stays on the phone | TV explains it is audio-only; ALAC itself is not decoded, so it is silent |
+| AirPlay icon in the **YouTube app** | HLS hand-off (`_airplay` video protocol) | not implemented |
+
+To watch a web video on the TV, start Screen Mirroring first, then play the video
+fullscreen — the picture and sound both travel over the mirroring stream.
+
+The AirPlay-video/HLS path is deliberately not advertised. Upstream UxPlay supports it only
+for the YouTube app — "streaming using the AirPlay icon in a browser window is not yet
+supported" — so enabling it would not fix the browser case, and it would divert other video
+content away from the mirroring path that does work.
+
 ## Audio
 
 | Sender | Codec | Supported |
 | --- | --- | --- |
 | Screen mirroring (iPhone/iPad) | AAC-ELD 44.1 kHz stereo | yes |
 | Some senders / AirPlay audio | AAC-LC | yes |
-| AirPlay audio (Music app) | ALAC | no — Android has no guaranteed ALAC decoder |
+| Audio-only AirPlay (Music app, in-app AirPlay buttons) | ALAC | no — Android has no guaranteed ALAC decoder |
 
 ## How it works
 
@@ -103,8 +121,8 @@ iPhone ──mDNS/Bonjour──▶ _airplay._tcp + _raop._tcp   (embedded mDNS r
 ## Tests
 
 ```bash
-./gradlew test                      # 44 JVM unit tests
-./gradlew connectedAndroidTest      # 26 instrumented tests (needs a device/emulator)
+./gradlew test                      # 49 JVM unit tests
+./gradlew connectedAndroidTest      # 29 instrumented tests (needs a device/emulator)
 ```
 
 The instrumented tests are the interesting ones: they boot the real native server and

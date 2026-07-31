@@ -21,6 +21,17 @@ sealed class ReceiverState {
     object Stopped : ReceiverState()
     data class Advertising(val name: String, val port: Int, val address: String?) : ReceiverState()
     data class Streaming(val clientName: String, val width: Int, val height: Int) : ReceiverState()
+
+    /**
+     * The sender opened an audio-only AirPlay session (it keeps the picture on its own
+     * screen). There is no video stream to show, so say so rather than going black.
+     */
+    data class AudioOnly(
+        val clientName: String,
+        val codec: String,
+        val playable: Boolean,
+    ) : ReceiverState()
+
     data class Failed(val reason: String) : ReceiverState()
 }
 
@@ -175,9 +186,15 @@ class AirPlayReceiver(private val context: Context) : AirPlayCallbacks {
         publishAdvertising()
     }
 
-    override fun onAudioFormat(contentType: Int) {
-        Log.i(TAG, "audio format ct=$contentType")
+    override fun onAudioFormat(contentType: Int, usingScreen: Boolean, isMedia: Boolean) {
+        val codec = AudioPipeline.describeContentType(contentType)
+        Log.i(TAG, "audio format $codec usingScreen=$usingScreen isMedia=$isMedia")
         audio.setFormat(contentType)
+        if (!usingScreen) {
+            // Audio-only AirPlay: no video will ever arrive, so don't sit on a black screen.
+            val playable = AudioPipeline.Format.of(contentType)?.supported == true
+            publish(ReceiverState.AudioOnly(clientName, codec, playable))
+        }
     }
 
     override fun onAudioData(data: ByteBuffer, length: Int, presentationTimeUs: Long) {

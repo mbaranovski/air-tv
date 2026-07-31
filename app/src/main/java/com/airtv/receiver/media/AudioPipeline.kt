@@ -17,12 +17,33 @@ import kotlin.math.pow
 class AudioPipeline {
 
     /** AirPlay "ct" content types. */
-    enum class Format(val contentType: Int) {
-        ALAC(2), AAC_LC(4), AAC_ELD(8);
+    enum class Format(val contentType: Int, val displayName: String, val supported: Boolean) {
+        /** Audio-only AirPlay; Android has no guaranteed ALAC decoder. */
+        ALAC(2, "ALAC (Apple Lossless)", supported = false),
+        AAC_LC(4, "AAC-LC", supported = true),
+
+        /** What screen mirroring always uses. */
+        AAC_ELD(8, "AAC-ELD", supported = true),
+        ;
 
         companion object {
             fun of(contentType: Int): Format? = entries.firstOrNull { it.contentType == contentType }
         }
+    }
+
+    companion object {
+        fun describeContentType(contentType: Int): String =
+            Format.of(contentType)?.displayName ?: "unknown (ct=$contentType)"
+
+        private const val TAG = "AudioPipeline"
+        private const val SAMPLE_RATE = 44100
+        private const val CHANNELS = 2
+        private const val AAC_PROFILE_LC = 2
+        private const val AAC_PROFILE_ELD = 39
+        private const val MUTED_DB = -30f
+        private const val INPUT_TIMEOUT_US = 20_000L
+        private const val OUTPUT_TIMEOUT_US = 20_000L
+        private const val DRAIN_JOIN_TIMEOUT_MS = 500L
     }
 
     private val lock = Any()
@@ -242,15 +263,4 @@ class AudioPipeline {
         track = null
     }
 
-    private companion object {
-        const val TAG = "AudioPipeline"
-        const val SAMPLE_RATE = 44100
-        const val CHANNELS = 2
-        const val AAC_PROFILE_LC = 2
-        const val AAC_PROFILE_ELD = 39
-        const val MUTED_DB = -30f
-        const val INPUT_TIMEOUT_US = 20_000L
-        const val OUTPUT_TIMEOUT_US = 20_000L
-        const val DRAIN_JOIN_TIMEOUT_MS = 500L
-    }
 }

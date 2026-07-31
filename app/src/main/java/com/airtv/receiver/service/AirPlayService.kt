@@ -101,6 +101,7 @@ class AirPlayService : Service() {
     private fun buildNotification(state: ReceiverState): Notification {
         val text = when (state) {
             is ReceiverState.Streaming -> getString(R.string.status_streaming, state.clientName)
+            is ReceiverState.AudioOnly -> getString(R.string.status_audio_only, state.clientName)
             is ReceiverState.Advertising -> getString(R.string.status_ready, state.name)
             is ReceiverState.Failed -> state.reason
             ReceiverState.Stopped -> getString(R.string.status_starting)

@@ -141,6 +141,20 @@ class MainActivity : Activity() {
                 ).joinToString("   ·   ")
             }
 
+            is ReceiverState.AudioOnly -> {
+                overlay.visibility = View.VISIBLE
+                if (state.playable) {
+                    statusText.text = getString(R.string.status_audio_only, state.clientName)
+                    detailsText.text = getString(R.string.status_audio_only_detail)
+                } else {
+                    statusText.text = getString(
+                        R.string.status_audio_unsupported, state.clientName, state.codec,
+                    )
+                    detailsText.text =
+                        getString(R.string.status_audio_unsupported_detail, state.codec)
+                }
+            }
+
             is ReceiverState.Failed -> {
                 overlay.visibility = View.VISIBLE
                 statusText.text = state.reason

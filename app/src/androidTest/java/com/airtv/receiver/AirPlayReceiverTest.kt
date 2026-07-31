@@ -76,7 +76,7 @@ class AirPlayReceiverTest {
 
         assertEquals(0, receiver.onVideoCodec(isH265 = false))
         receiver.onVideoSize(1920, 1080)
-        receiver.onAudioFormat(8) // AAC-ELD, as mirroring always uses
+        receiver.onAudioFormat(8, usingScreen = true, isMedia = false) // mirroring
 
         for (unit in stream) {
             // The native layer hands us direct buffers over its own memory.
@@ -128,6 +128,46 @@ class AirPlayReceiverTest {
         // A late frame after the stop must be dropped, not crash.
         val late = ByteBuffer.allocateDirect(16).apply { position(0) }
         receiver.onVideoData(late, 16, 0)
+    }
+
+    /**
+     * What happens when you press AirPlay inside a video player instead of using Screen
+     * Mirroring: iOS opens an audio-only session (ALAC) and never sends video. The TV must
+     * explain that rather than showing a black screen.
+     */
+    @Test
+    fun anAudioOnlyAlacSessionIsReportedInsteadOfGoingBlank() {
+        receiver.setSurface(surface)
+        assertTrue(receiver.onClientConnect("Ajfon Michała", "iPhone17,2", "fe:76:fd:f1:48:01"))
+        receiver.onSessionStart()
+        receiver.onAudioFormat(2, usingScreen = false, isMedia = true)
+
+        val state = receiver.state
+        assertTrue("expected AudioOnly, got $state", state is ReceiverState.AudioOnly)
+        state as ReceiverState.AudioOnly
+        assertEquals("Ajfon Michała", state.clientName)
+        assertEquals("ALAC (Apple Lossless)", state.codec)
+        assertEquals(false, state.playable)
+    }
+
+    @Test
+    fun anAudioOnlyAacSessionIsReportedAsPlayable() {
+        receiver.onSessionStart()
+        receiver.onAudioFormat(4, usingScreen = false, isMedia = true)
+        val state = receiver.state
+        assertTrue("expected AudioOnly, got $state", state is ReceiverState.AudioOnly)
+        assertEquals(true, (state as ReceiverState.AudioOnly).playable)
+    }
+
+    @Test
+    fun aMirroringSessionIsNotReportedAsAudioOnly() {
+        receiver.setSurface(surface)
+        receiver.onSessionStart()
+        receiver.onAudioFormat(8, usingScreen = true, isMedia = false)
+        assertTrue(
+            "mirroring must stay in Streaming, got ${receiver.state}",
+            receiver.state is ReceiverState.Streaming,
+        )
     }
 
     @Test
