@@ -13,6 +13,10 @@
     <!-- Runs on Google TV / Android TV, where there is no touchscreen. -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <!-- The Wi-Fi permissions above only exist for the multicast lock; an Ethernet-only
+         TV box must still be able to install this. -->
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
 
     <application
         android:allowBackup="true"
