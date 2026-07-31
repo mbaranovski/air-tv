@@ -1,0 +1,3 @@
+/Users/mbaranovski/Workspace/screen-share/app/.cxx/RelWithDebInfo/6q4c354u/arm64-v8a/CMakeFiles/airplayjni.dir
+/Users/mbaranovski/Workspace/screen-share/app/.cxx/RelWithDebInfo/6q4c354u/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/mbaranovski/Workspace/screen-share/app/.cxx/RelWithDebInfo/6q4c354u/arm64-v8a/CMakeFiles/rebuild_cache.dir

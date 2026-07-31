@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/Users/mbaranovski/Workspace/screen-share/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/mbaranovski/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/mbaranovski/Workspace/screen-share/app/.cxx/Debug/2t4p4n2x/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/mbaranovski/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/mbaranovski/Workspace/screen-share/app/.cxx/Debug/2t4p4n2x/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "airplayjni::@6890427a1f51a3e7e1df": {
+      "artifactName": "airplayjni",
+      "abi": "x86_64",
+      "output": "/Users/mbaranovski/Workspace/screen-share/app/build/intermediates/cxx/Debug/2t4p4n2x/obj/x86_64/libairplayjni.so",
+      "runtimeFiles": []
+    }
+  }
+}

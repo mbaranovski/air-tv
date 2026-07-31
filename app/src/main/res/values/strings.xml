@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AirTV</string>
+    <string name="notification_channel_name">AirPlay receiver</string>
+    <string name="status_starting">Starting…</string>
+    <string name="status_ready">Ready. Choose “%1$s” from the AirPlay menu on your iPhone or iPad.</string>
+    <string name="status_streaming">Mirroring from %1$s</string>
+    <string name="hint">Swipe down from the top-right on your device → Screen Mirroring</string>
+</resources>
