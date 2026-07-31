@@ -39,6 +39,14 @@ class VideoPipeline {
     var framesDropped = 0L
         private set
 
+    /**
+     * Reports the geometry the decoder is actually producing (width, height), which is what
+     * the picture must be letterboxed to. Fires from the decoder thread whenever the output
+     * format changes — including mid-session, e.g. when the sender is rotated.
+     */
+    @Volatile
+    var onDecodedSize: ((Int, Int) -> Unit)? = null
+
     /** Attaches (or detaches, with null) the output surface. */
     fun setSurface(newSurface: Surface?) {
         synchronized(lock) {
@@ -77,24 +85,31 @@ class VideoPipeline {
             data.position(0)
             data.get(scratch, 0, length)
 
-            if (NalUnits.isCodecConfig(scratch, length, isH265)) {
-                val config = scratch.copyOf(length)
-                if (!config.contentEquals(codecConfig)) {
-                    Log.i(TAG, "codec config (${NalUnits.describe(config, length, isH265)})")
-                    codecConfig = config
-                    releaseCodecLocked()
-                }
+            // The parameter sets usually arrive prepended to a keyframe rather than as an
+            // access unit of their own, so look for them in every buffer.
+            val parameterSets = NalUnits.extractParameterSets(scratch, length, isH265)
+            if (parameterSets != null && !parameterSets.contentEquals(codecConfig)) {
+                Log.i(
+                    TAG,
+                    "parameter sets (${NalUnits.describe(parameterSets, parameterSets.size, isH265)})" +
+                        " in access unit (${NalUnits.describe(scratch, length, isH265)})",
+                )
+                codecConfig = parameterSets
+                releaseCodecLocked()
                 startCodecIfPossibleLocked()
+            }
+            if (NalUnits.isCodecConfig(scratch, length, isH265)) {
+                // Parameter sets only: they went into the decoder configuration above.
                 return
             }
 
             val activeCodec = codec ?: run {
-                framesDropped++
+                dropFrame("no decoder yet (config=${codecConfig != null} surface=${surface != null})")
                 return
             }
             if (needKeyFrame) {
                 if (!NalUnits.isKeyFrame(scratch, length, isH265)) {
-                    framesDropped++
+                    dropFrame("waiting for a keyframe")
                     return
                 }
                 needKeyFrame = false
@@ -102,7 +117,7 @@ class VideoPipeline {
             try {
                 val index = activeCodec.dequeueInputBuffer(INPUT_TIMEOUT_US)
                 if (index < 0) {
-                    framesDropped++
+                    dropFrame("no free decoder input buffer")
                     return
                 }
                 val input = activeCodec.getInputBuffer(index) ?: return
@@ -139,6 +154,17 @@ class VideoPipeline {
     }
 
     val isRunning: Boolean get() = synchronized(lock) { codec != null }
+
+    /**
+     * Dropping frames silently once hid a total failure to render behind a black screen, so
+     * every dropped frame has a logged reason (rate limited to stay usable).
+     */
+    private fun dropFrame(reason: String) {
+        framesDropped++
+        if (framesDropped == 1L || framesDropped % DROP_LOG_INTERVAL == 0L) {
+            Log.w(TAG, "dropped $framesDropped video frames: $reason")
+        }
+    }
 
     private fun startCodecIfPossibleLocked() {
         if (codec != null) return
@@ -183,8 +209,14 @@ class VideoPipeline {
                             activeCodec.releaseOutputBuffer(index, true)
                             framesRendered++
                         }
-                        index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED ->
-                            Log.i(TAG, "output format: ${activeCodec.outputFormat}")
+                        index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                            val format = activeCodec.outputFormat
+                            Log.i(TAG, "output format: $format")
+                            VideoFormats.displaySize(format)?.let { (width, height) ->
+                                Log.i(TAG, "decoded picture size: ${width}x$height")
+                                onDecodedSize?.invoke(width, height)
+                            }
+                        }
                     }
                 } catch (e: IllegalStateException) {
                     // codec released underneath us
@@ -218,6 +250,7 @@ class VideoPipeline {
         const val TAG = "VideoPipeline"
         const val DEFAULT_WIDTH = 1920
         const val DEFAULT_HEIGHT = 1080
+        const val DROP_LOG_INTERVAL = 60L
         const val INPUT_TIMEOUT_US = 100_000L
         const val OUTPUT_TIMEOUT_US = 20_000L
         const val DRAIN_JOIN_TIMEOUT_MS = 500L

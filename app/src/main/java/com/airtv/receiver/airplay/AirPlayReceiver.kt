@@ -48,8 +48,20 @@ class AirPlayReceiver(private val context: Context) : AirPlayCallbacks {
     @Volatile
     private var sourceHeight = 0
 
-    /** The display geometry advertised to senders; also the ideal surface size. */
+    /** The display geometry advertised to senders. */
     val advertisedDisplay: AdvertisedDisplay by lazy { detectDisplay() }
+
+    init {
+        // The decoder is the authority on the picture size the UI must letterbox to; the
+        // size the sender announces can disagree with what it actually encodes.
+        video.onDecodedSize = { width, height ->
+            if (width != sourceWidth || height != sourceHeight) {
+                sourceWidth = width
+                sourceHeight = height
+                publishStreaming()
+            }
+        }
+    }
 
     val videoFramesRendered: Long get() = video.framesRendered
     val videoFramesDropped: Long get() = video.framesDropped

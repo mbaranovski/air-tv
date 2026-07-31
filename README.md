@@ -47,9 +47,15 @@ switch away; press **Back** on the TV remote to exit and stop it.
 ## About resolution
 
 The receiver advertises your panel's real mode — verified at **3840×2160 @ 60 Hz** on a 4K
-display — and the video surface is created at that size, so nothing is downscaled by the
-compositor. The decode path handles H.264 and H.265 up to whatever your TV's decoder
-supports, which is 4K on current Google TV hardware.
+display. The decoder produces frames at the stream's own resolution and the compositor
+scales them into the video rectangle, so nothing is scaled twice; the decode path handles
+H.264 and H.265 up to whatever your TV's decoder supports, which is 4K on current Google TV
+hardware.
+
+The picture keeps the sender's aspect ratio: a portrait iPhone is pillarboxed (black bars
+left and right), a 16:9 Mac fills the screen. The rectangle is derived from the decoder's
+own output geometry — crop rectangle included — rather than the size the sender announces,
+and it follows mid-session changes such as rotating the phone.
 
 What the stream actually arrives at is **iOS's decision, not the receiver's**: for screen
 mirroring iOS picks the encode resolution itself and in practice caps it at 1080p
@@ -97,14 +103,17 @@ iPhone ──mDNS/Bonjour──▶ _airplay._tcp + _raop._tcp   (embedded mDNS r
 ## Tests
 
 ```bash
-./gradlew test                      # 29 JVM unit tests
-./gradlew connectedAndroidTest      # 16 instrumented tests (needs a device/emulator)
+./gradlew test                      # 44 JVM unit tests
+./gradlew connectedAndroidTest      # 26 instrumented tests (needs a device/emulator)
 ```
 
 The instrumented tests are the interesting ones: they boot the real native server and
 speak RTSP to it over a socket, send real multicast DNS queries and assert the responder
 answers for both services, and push a genuine H.264 stream (produced by the platform
-encoder) through the decode pipeline onto a real surface.
+encoder) through the decode pipeline onto a real surface — reshaped the way AirPlay actually
+delivers it, with the parameter sets prepended to a keyframe rather than sent on their own.
+That reshaping matters: testing against the encoder's raw output hides a bug that makes a
+real iPhone show a black screen.
 
 Not covered automatically: a real iPhone completing the FairPlay handshake. That needs an
 actual device on the network.

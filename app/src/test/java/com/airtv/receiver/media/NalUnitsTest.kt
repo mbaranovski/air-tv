@@ -1,6 +1,8 @@
 package com.airtv.receiver.media
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -84,5 +86,58 @@ class NalUnitsTest {
     @Test
     fun `describe lists nal types for logging`() {
         assertEquals("7,8", NalUnits.describe(annexB(0x67, 0x68), 14, isH265 = false))
+    }
+
+    // iOS never sends a parameter-set-only access unit: the mirror protocol carries the
+    // SPS/PPS in a separate control packet, which the library prepends to the next frame.
+    // So the parameter sets have to be recoverable from an access unit that also has slices.
+
+    @Test
+    fun `parameter sets are extracted from an sps pps idr access unit`() {
+        val au = annexB(0x67, 0x68, 0x65)
+        val extracted = NalUnits.extractParameterSets(au, au.size, isH265 = false)
+        assertArrayEquals(annexB(0x67, 0x68), extracted)
+    }
+
+    @Test
+    fun `parameter sets are extracted from a config only access unit`() {
+        val au = annexB(0x67, 0x68)
+        assertArrayEquals(au, NalUnits.extractParameterSets(au, au.size, isH265 = false))
+    }
+
+    @Test
+    fun `an access unit without parameter sets yields null`() {
+        val au = annexB(0x65)
+        assertNull(NalUnits.extractParameterSets(au, au.size, isH265 = false))
+    }
+
+    @Test
+    fun `h265 vps sps pps are extracted from a keyframe access unit`() {
+        val au = annexB(32 shl 1, 33 shl 1, 34 shl 1, 19 shl 1)
+        val extracted = NalUnits.extractParameterSets(au, au.size, isH265 = true)
+        assertArrayEquals(annexB(32 shl 1, 33 shl 1, 34 shl 1), extracted)
+    }
+
+    @Test
+    fun `extracted parameter sets always use four byte start codes`() {
+        val au = byteArrayOf(0, 0, 1, 0x67, 0x11, 0, 0, 1, 0x68, 0x22, 0, 0, 1, 0x65, 0x33)
+        val extracted = NalUnits.extractParameterSets(au, au.size, isH265 = false)!!
+        assertArrayEquals(
+            byteArrayOf(0, 0, 0, 1, 0x67, 0x11, 0, 0, 0, 1, 0x68, 0x22),
+            extracted,
+        )
+    }
+
+    @Test
+    fun `extraction respects the length limit`() {
+        val au = annexB(0x67, 0x68, 0x65)
+        // Only the SPS is visible within the first 7 bytes.
+        assertArrayEquals(annexB(0x67), NalUnits.extractParameterSets(au, 7, isH265 = false))
+    }
+
+    @Test
+    fun `sps pps idr access unit is still reported as a keyframe`() {
+        val au = annexB(0x67, 0x68, 0x65)
+        assertTrue(NalUnits.isKeyFrame(au, au.size, isH265 = false))
     }
 }

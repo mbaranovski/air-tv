@@ -70,6 +70,28 @@ object H264TestStream {
         return units
     }
 
+    /**
+     * Reshapes an encoder stream the way the AirPlay mirror protocol actually delivers it:
+     * iOS sends the SPS/PPS in a separate control packet, which the receiver library
+     * prepends to the following frame, so a standalone parameter-set access unit never
+     * appears. The platform encoder does emit one, which is exactly why a test using its
+     * raw output can pass while a real iPhone shows a black screen.
+     */
+    fun asAirPlayShaped(units: List<TestAccessUnit>): List<TestAccessUnit> {
+        val out = ArrayList<TestAccessUnit>(units.size)
+        var pending: ByteArray? = null
+        for (unit in units) {
+            if (unit.isConfig) {
+                pending = (pending ?: ByteArray(0)) + unit.bytes
+                continue
+            }
+            val bytes = pending?.plus(unit.bytes) ?: unit.bytes
+            pending = null
+            out += TestAccessUnit(bytes, unit.presentationTimeUs, isConfig = false)
+        }
+        return out
+    }
+
     private fun pickColorFormat(encoder: MediaCodec): Int {
         val supported = encoder.codecInfo
             .getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AVC)

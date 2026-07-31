@@ -61,7 +61,10 @@ class AirPlayReceiverTest {
 
     @Test
     fun aMirroringSessionRendersFramesAndTracksState() {
-        val stream = H264TestStream.encode(width, height, frameCount = 30)
+        // Shaped the way a real iPhone sends it: parameter sets prepended to the keyframe.
+        val stream = H264TestStream.asAirPlayShaped(
+            H264TestStream.encode(width, height, frameCount = 30),
+        )
 
         receiver.setSurface(surface)
         assertTrue(receiver.onClientConnect("Michal's iPhone", "iPhone15,2", "aa:bb:cc:dd:ee:ff"))
@@ -106,7 +109,9 @@ class AirPlayReceiverTest {
 
     @Test
     fun videoStopEndsTheSessionWithoutCrashing() {
-        val stream = H264TestStream.encode(width, height, frameCount = 10)
+        val stream = H264TestStream.asAirPlayShaped(
+            H264TestStream.encode(width, height, frameCount = 10),
+        )
         receiver.setSurface(surface)
         receiver.onSessionStart()
         receiver.onVideoCodec(isH265 = false)

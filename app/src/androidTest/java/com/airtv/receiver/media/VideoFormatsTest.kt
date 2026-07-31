@@ -59,6 +59,52 @@ class VideoFormatsTest {
         assertEquals(MediaFormat.MIMETYPE_VIDEO_HEVC, format.getString(MediaFormat.KEY_MIME))
     }
 
+    /**
+     * Encoders often round the coded size up to a macroblock multiple and signal the real
+     * picture size with a crop rectangle; using the coded size would letterbox the picture
+     * slightly wrong, so the crop must win.
+     */
+    @Test
+    fun displaySizeUsesTheCropRectangleWhenPresent() {
+        val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, 1920, 1088)
+        format.setInteger("crop-left", 0)
+        format.setInteger("crop-right", 1919)
+        format.setInteger("crop-top", 0)
+        format.setInteger("crop-bottom", 1079)
+        assertEquals(1920 to 1080, VideoFormats.displaySize(format))
+    }
+
+    @Test
+    fun displaySizeFallsBackToTheCodedSize() {
+        val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, 498, 1080)
+        assertEquals(498 to 1080, VideoFormats.displaySize(format))
+    }
+
+    @Test
+    fun displaySizeIsNullWithoutGeometry() {
+        val format = MediaFormat()
+        format.setString(MediaFormat.KEY_MIME, MediaFormat.MIMETYPE_VIDEO_AVC)
+        assertEquals(null, VideoFormats.displaySize(format))
+    }
+
+    @Test
+    fun aRealDecoderReportsTheStreamGeometry() {
+        val stream = H264TestStream.encode(640, 360, frameCount = 4)
+        val realConfig = stream.first { it.isConfig }.bytes
+        val format = VideoFormats.create(realConfig, 640, 360, isH265 = false, tuned = false)
+        val codec = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+        try {
+            codec.configure(format, null, null, 0)
+            codec.start()
+            // csd-0 alone is enough for the decoder to publish the output format
+            val size = VideoFormats.displaySize(codec.outputFormat)
+            assertEquals(640 to 360, size)
+        } finally {
+            runCatching { codec.stop() }
+            codec.release()
+        }
+    }
+
     @Test
     fun aRealDecoderStartsWithTheUntunedFormat() {
         val stream = H264TestStream.encode(640, 360, frameCount = 2)

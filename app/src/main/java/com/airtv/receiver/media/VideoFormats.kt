@@ -10,6 +10,25 @@ object VideoFormats {
     const val MAX_FPS = 60
 
     /**
+     * The picture size a decoder is actually producing: the crop rectangle if the stream
+     * signals one, otherwise the coded size. Null if the format carries no geometry yet.
+     */
+    fun displaySize(format: MediaFormat): Pair<Int, Int>? {
+        val cropped = runCatching {
+            val left = format.getInteger("crop-left")
+            val right = format.getInteger("crop-right")
+            val top = format.getInteger("crop-top")
+            val bottom = format.getInteger("crop-bottom")
+            (right - left + 1) to (bottom - top + 1)
+        }.getOrNull()
+        if (cropped != null && cropped.first > 0 && cropped.second > 0) return cropped
+
+        return runCatching {
+            format.getInteger(MediaFormat.KEY_WIDTH) to format.getInteger(MediaFormat.KEY_HEIGHT)
+        }.getOrNull()?.takeIf { it.first > 0 && it.second > 0 }
+    }
+
+    /**
      * @param tuned adds the optional low-latency / realtime hints. They measurably reduce
      * mirroring lag, but they are advisory and some decoders refuse to configure with them,
      * so the pipeline retries with `tuned = false`.

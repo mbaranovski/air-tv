@@ -76,6 +76,40 @@ class VideoPipelineTest {
         )
     }
 
+    /**
+     * The shape a real iPhone sends: parameter sets prepended to the keyframe, never a
+     * standalone codec-config access unit. This is what a Google TV showed a black screen on.
+     */
+    @Test
+    fun decodesAStreamWhoseParameterSetsArePrependedToTheKeyframe() {
+        openSurface()
+        val stream = H264TestStream.asAirPlayShaped(
+            H264TestStream.encode(width, height, frameCount = 30),
+        )
+        assertTrue(
+            "the AirPlay-shaped stream must not contain a standalone config unit",
+            stream.none { it.isConfig },
+        )
+        assertTrue("too few frames", stream.size >= 20)
+
+        pipeline.setCodec(h265 = false)
+        pipeline.setSurface(surface)
+        for (unit in stream) {
+            pipeline.submit(
+                ByteBuffer.wrap(unit.bytes), unit.bytes.size, unit.presentationTimeUs,
+            )
+        }
+
+        assertTrue(
+            "only ${pipeline.framesRendered} frames rendered (dropped ${pipeline.framesDropped})",
+            waitFor(6_000) { pipeline.framesRendered >= 20 },
+        )
+        assertTrue(
+            "surface received only ${imagesReceived.get()} images",
+            waitFor(3_000) { imagesReceived.get() >= 5 },
+        )
+    }
+
     @Test
     fun framesBeforeTheSurfaceArrivesAreDroppedNotCrashing() {
         val stream = H264TestStream.encode(width, height, frameCount = 10)

@@ -7,10 +7,12 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
+import android.view.Gravity
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.TextView
 import com.airtv.receiver.R
 import com.airtv.receiver.airplay.AirPlayReceiver
@@ -40,7 +42,6 @@ class MainActivity : Activity() {
             service = local
             receiver = local.receiver
             local.receiver.addListener(stateListener)
-            applySurfaceSize()
             pendingSurface?.let { local.receiver.setSurface(it.surface) }
         }
 
@@ -96,12 +97,30 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Render at the panel's native resolution rather than the (often 1080p) UI resolution,
-     * so 4K streams are not downscaled by the compositor.
+     * Sizes the video rectangle to the stream's aspect ratio and centres it, so a portrait
+     * iPhone is pillarboxed instead of stretched across the whole panel. The surface's
+     * buffer size is left alone: the decoder is the producer, and the compositor scales its
+     * output into this rectangle.
      */
-    private fun applySurfaceSize() {
-        val display = receiver?.advertisedDisplay ?: return
-        surfaceView.holder.setFixedSize(display.width, display.height)
+    private fun applyVideoAspect(sourceWidth: Int, sourceHeight: Int) {
+        val root = findViewById<View>(android.R.id.content)
+        val availableWidth = root.width
+        val availableHeight = root.height
+        if (availableWidth <= 0 || availableHeight <= 0) {
+            // Layout has not settled yet; try again once it has.
+            root.post { applyVideoAspect(sourceWidth, sourceHeight) }
+            return
+        }
+        val rect = VideoLayout.fitInside(
+            sourceWidth, sourceHeight, availableWidth, availableHeight,
+        ) ?: return
+        val current = surfaceView.layoutParams as? FrameLayout.LayoutParams
+        if (current != null && current.width == rect.width && current.height == rect.height) {
+            return
+        }
+        surfaceView.layoutParams = FrameLayout.LayoutParams(
+            rect.width, rect.height, Gravity.CENTER,
+        )
     }
 
     private fun render(state: ReceiverState) {
@@ -109,6 +128,7 @@ class MainActivity : Activity() {
             is ReceiverState.Streaming -> {
                 overlay.visibility = View.GONE
                 statusText.text = getString(R.string.status_streaming, state.clientName)
+                applyVideoAspect(state.width, state.height)
             }
 
             is ReceiverState.Advertising -> {
