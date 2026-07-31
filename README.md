@@ -57,6 +57,14 @@ left and right), a 16:9 Mac fills the screen. The rectangle is derived from the 
 own output geometry — crop rectangle included — rather than the size the sender announces,
 and it follows mid-session changes such as rotating the phone.
 
+The idle screen shows the mode it detected. If a 4K TV reports `1920×1080`, that is usually
+correct rather than a bug: many Android TVs (e.g. MediaTek mt5889 sets) composite the whole
+UI at 1080p and let the panel's own scaler upscale, exposing only 1080p modes to apps —
+`sys.display-size` says `3840x2160` while Android's `supportedModes` lists 1080p only. 4K on
+those sets is reachable only through the separate hardware video plane, not a graphics
+surface. The app advertises the largest mode the platform offers, so a device that does
+expose 3840×2160 gets it with no change.
+
 What the stream actually arrives at is **iOS's decision, not the receiver's**: for screen
 mirroring iOS picks the encode resolution itself and in practice caps it at 1080p
 (sometimes lower, and it drops resolution when the network is congested). No receiver
