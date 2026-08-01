@@ -1,0 +1,95 @@
+name: Release
+
+# Publishes a signed-with-debug-key APK as a GitHub release asset. The asset is always
+# named AirTV.apk so that this URL keeps working for every release, which matters because
+# it has to be typed on a TV remote:
+#   https://github.com/mbaranovski/air-tv/releases/latest/download/AirTV.apk
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build and release, e.g. 1.0.0'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::version '$VERSION' is not major.minor.patch"
+            exit 1
+          fi
+          MAJOR=${VERSION%%.*}; REST=${VERSION#*.}; MINOR=${REST%%.*}; PATCH=${REST#*.}
+          echo "name=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$((MAJOR * 10000 + MINOR * 100 + PATCH))" >> "$GITHUB_OUTPUT"
+          echo "Building $VERSION (versionCode $((MAJOR * 10000 + MINOR * 100 + PATCH)))"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install the SDK components this project pins
+        run: |
+          sdkmanager --install \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "ndk;26.1.10909125" \
+            "cmake;3.22.1"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew test --console=plain
+
+      - name: Build release APK
+        run: |
+          ./gradlew assembleRelease --console=plain \
+            -PversionName=${{ steps.version.outputs.name }} \
+            -PversionCode=${{ steps.version.outputs.code }}
+
+      - name: Stage the asset
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk release/AirTV.apk
+          ls -l release/
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.name }}
+          name: AirTV ${{ steps.version.outputs.name }}
+          files: release/AirTV.apk
+          generate_release_notes: true
+          body: |
+            AirPlay screen-mirroring receiver for Google TV / Android TV.
+
+            **Install on the TV without a computer:** install *Downloader* (AFTVnews) from
+            the Play Store, allow it to install unknown apps, and open
+
+                https://github.com/mbaranovski/air-tv/releases/latest/download/AirTV.apk
+
+            **Install over adb:** `adb connect <tv-ip>:5555 && adb install -r AirTV.apk`
+
+            The APK is signed with the standard Android debug key, so it is for sideloading
+            only. It contains native code for arm64-v8a, armeabi-v7a and x86_64.

@@ -6,30 +6,117 @@ pairing code, no account, no cloud.
 
 ![idle screen](docs/idle-screen.png)
 
-## Install on your Google TV
+**Just want it on your TV?** See
+[Install straight on the TV](#install-straight-on-the-tv-no-computer) — no computer, no
+developer mode.
 
-You need `adb` once, over the network. On the TV: **Settings → System → About → tap
-"Android TV OS build" 7×** to enable developer options, then **Settings → System →
-Developer options → USB debugging / Network debugging → on**. Note the TV's IP address
-(Settings → Network).
+## Install straight on the TV (no computer)
+
+The TV downloads the APK from GitHub itself.
+
+1. On the TV, install **Downloader** (by AFTVnews) from the Google Play Store.
+2. Allow it to install apps: **Settings → Apps → Security & restrictions → Install unknown
+   apps → Downloader → on**. On Google TV the path is **Settings → Privacy → Apps → Special
+   app access → Install unknown apps → Downloader → on**.
+3. Open Downloader and enter this URL (it always points at the newest release):
+
+   ```
+   https://github.com/mbaranovski/air-tv/releases/latest/download/AirTV.apk
+   ```
+
+4. It downloads, then asks to install — choose **Install**, then **Done**, and delete the
+   downloaded file when Downloader offers to.
+5. Launch **AirTV** from the apps row on the home screen.
+
+To update later, repeat with the same URL; installing over the top keeps your pairing.
+
+> Releases are built by GitHub Actions from a `v*` tag — see
+> [`.github/workflows/release.yml`](.github/workflows/release.yml). All releases are on the
+> [Releases page](https://github.com/mbaranovski/air-tv/releases), and `dist/AirTV.apk` in
+> this repo is a committed copy of the current build.
+
+## Build from source
+
+**Requirements**
+
+- **JDK 17** (`java -version` should say 17.x). Newer JDKs will not work with this AGP.
+- **Android SDK** with platform 34, build-tools 34, **NDK 26.1.10909125** and CMake 3.22.1.
+- Nothing else: the native C dependencies are cross-compiled already and committed under
+  `app/src/main/cpp/prebuilt/`, so you do not need OpenSSL, libplist or autotools.
+
+If you have Android Studio, install those components in **SDK Manager → SDK Tools** (tick
+"Show Package Details" to pick the exact NDK version). To set it up from a terminal instead:
 
 ```bash
-adb connect <tv-ip>:5555          # accept the prompt shown on the TV
-adb install -r AirTV.apk
+# macOS example; on Linux use commandlinetools-linux-*.zip and ~/Android/Sdk
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+mkdir -p "$ANDROID_HOME/cmdline-tools"
+curl -L -o clt.zip https://dl.google.com/android/repository/commandlinetools-mac-11076708_latest.zip
+unzip -q clt.zip && mv cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+
+export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+yes | sdkmanager --licenses
+sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" \
+           "ndk;26.1.10909125" "cmake;3.22.1"
 ```
 
-Then launch **AirTV** from the Android TV home screen (it appears in the apps row).
-
-To build the APK yourself:
+**Build**
 
 ```bash
-echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # or your SDK path
+git clone https://github.com/mbaranovski/air-tv.git
+cd air-tv
+echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # your SDK path
+
 ./gradlew assembleRelease
-# app/build/outputs/apk/release/app-release.apk
+# -> app/build/outputs/apk/release/app-release.apk
 ```
+
+The first build takes a few minutes: it compiles the vendored AirPlay C library for three
+ABIs (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Use `./gradlew assembleDebug` while developing.
 
 The release APK is signed with the debug key — fine for sideloading, not for Play Store
-distribution.
+distribution. To sign it properly, add a `signingConfig` to `app/build.gradle.kts`.
+
+To refresh the committed native dependencies (OpenSSL 3.0.16, libplist 2.6.0) — only needed
+if you want to bump their versions:
+
+```bash
+NDK_ROOT=$ANDROID_HOME/ndk/26.1.10909125 tools/build-native-deps.sh
+```
+
+## Install on your TV
+
+**1. Enable debugging on the TV.** Settings → System → About → tap **"Android TV OS build"
+seven times** to unlock developer options. Then Settings → System → **Developer options** →
+turn on **USB debugging** and **Network debugging** (called "Wireless debugging" on some
+sets). Note the TV's IP address under Settings → Network.
+
+**2. Connect and install** from your computer:
+
+```bash
+adb connect 192.168.1.50:5555     # your TV's IP — accept the prompt shown on the TV
+adb install -r dist/AirTV.apk     # or app/build/outputs/apk/release/app-release.apk
+```
+
+**3. Launch AirTV** from the Android TV home screen — it appears in the apps row with its
+own banner. (First launch can also be triggered from the terminal:
+`adb shell am start -n com.airtv.receiver/.ui.MainActivity`.)
+
+There is a helper that does install + launch + log tailing in one go, which is the easiest
+way to see what is happening during a mirroring test:
+
+```bash
+tools/run-on-device.sh                  # uses the already-connected device
+tools/run-on-device.sh 192.168.1.50     # connects first
+```
+
+**Notes**
+
+- After the TV reboots you need `adb connect <tv-ip>:5555` again.
+- `adb: device unauthorized` means the confirmation dialog on the TV was missed — run
+  `adb connect` again and accept it (tick "always allow").
+- Installing over an older copy keeps your pairing; `adb uninstall com.airtv.receiver`
+  removes the app and its stored pairing key.
 
 ## Using it
 

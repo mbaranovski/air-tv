@@ -3,6 +3,11 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Overridable so a release build can take its version from the git tag:
+//   ./gradlew assembleRelease -PversionName=1.0.0 -PversionCode=10000
+val appVersionName = (findProperty("versionName") as String?) ?: "1.0.0"
+val appVersionCode = (findProperty("versionCode") as String?)?.toInt() ?: 1
+
 android {
     namespace = "com.airtv.receiver"
     compileSdk = 34
@@ -12,8 +17,8 @@ android {
         applicationId = "com.airtv.receiver"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
