@@ -1,7 +1,7 @@
 # AirTV — AirPlay receiver for Google TV / Android TV
 
-Mirror your iPhone or iPad screen (with audio) to a Google TV or Android TV device over
-AirPlay. Open the app on the TV, pick the TV in the iOS Screen Mirroring menu, done — no
+Mirror your iPhone, iPad or Mac screen (with audio) to a Google TV or Android TV device
+over AirPlay. Open the app on the TV, pick the TV in the Screen Mirroring menu, done — no
 pairing code, no account, no cloud.
 
 ![idle screen](docs/idle-screen.png)
@@ -130,9 +130,14 @@ tools/run-on-device.sh 192.168.1.50     # connects first
 ## Using it
 
 1. Open AirTV on the TV. It shows `Ready. Choose "<TV name>" …` plus its IP and display mode.
-2. On the iPhone/iPad: swipe down from the top-right corner → **Screen Mirroring** → pick
-   your TV.
+2. Pick the TV from the Screen Mirroring menu on the sender:
+   - **iPhone / iPad** — swipe down from the top-right corner → **Screen Mirroring**.
+   - **Mac** — menu bar **Control Centre → Screen Mirroring** (or System Settings →
+     Displays). macOS uses the same AirPlay mirroring protocol, so it works the same way.
 3. The TV switches to your device's screen, with audio.
+
+A Mac sends a 16:9 stream, so it fills the TV edge to edge; a phone held in portrait is
+pillarboxed, which is expected — see [About resolution](#about-resolution).
 
 Both devices must be on the same network, and the network must allow multicast (mDNS) and
 direct device-to-device traffic. Guest/AP-isolated Wi-Fi networks will not work.
@@ -190,14 +195,14 @@ content away from the mirroring path that does work.
 
 | Sender | Codec | Supported |
 | --- | --- | --- |
-| Screen mirroring (iPhone/iPad) | AAC-ELD 44.1 kHz stereo | yes |
+| Screen mirroring (iPhone/iPad/Mac) | AAC-ELD 44.1 kHz stereo | yes |
 | Some senders / AirPlay audio | AAC-LC | yes |
 | Audio-only AirPlay (Music app, in-app AirPlay buttons) | ALAC | no — Android has no guaranteed ALAC decoder |
 
 ## How it works
 
 ```
-iPhone ──mDNS/Bonjour──▶ _airplay._tcp + _raop._tcp   (embedded mDNS responder)
+sender ──mDNS/Bonjour─▶ _airplay._tcp + _raop._tcp   (embedded mDNS responder)
        ──RTSP──────────▶ pair-setup / fp-setup / SETUP (FairPlay, Ed25519/Curve25519)
        ──RTP───────────▶ H.264 access units + AAC-ELD frames (AES encrypted)
                              │
@@ -237,8 +242,9 @@ delivers it, with the parameter sets prepended to a keyframe rather than sent on
 That reshaping matters: testing against the encoder's raw output hides a bug that makes a
 real iPhone show a black screen.
 
-Not covered automatically: a real iPhone completing the FairPlay handshake. That needs an
-actual device on the network.
+Not covered automatically: a real iPhone or Mac completing the FairPlay handshake. That
+needs an actual device on the network. Mirroring has been verified by hand from an iPhone
+(portrait and landscape) and from a MacBook Pro.
 
 ## Releases and signing
 
