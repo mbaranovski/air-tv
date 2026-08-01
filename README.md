@@ -74,8 +74,17 @@ echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # your SDK path
 The first build takes a few minutes: it compiles the vendored AirPlay C library for three
 ABIs (`arm64-v8a`, `armeabi-v7a`, `x86_64`). Use `./gradlew assembleDebug` while developing.
 
-The release APK is signed with the debug key — fine for sideloading, not for Play Store
-distribution. To sign it properly, add a `signingConfig` to `app/build.gradle.kts`.
+A plain local build is signed with your machine's Android debug key, which is fine for
+testing. Published releases are signed with a stable key so that each one installs as an
+update over the last (see [Releases and signing](#releases-and-signing)). To build a
+release-signed APK yourself:
+
+```bash
+./gradlew assembleRelease \
+  -PsigningKeystore=$PWD/airtv-release.jks \
+  -PsigningKeystorePassword=<password> \
+  -PsigningKeyAlias=airtv
+```
 
 To refresh the committed native dependencies (OpenSSL 3.0.16, libplist 2.6.0) — only needed
 if you want to bump their versions:
@@ -230,6 +239,38 @@ real iPhone show a black screen.
 
 Not covered automatically: a real iPhone completing the FairPlay handshake. That needs an
 actual device on the network.
+
+## Releases and signing
+
+Tagging `vX.Y.Z` and pushing the tag runs
+[`.github/workflows/release.yml`](.github/workflows/release.yml), which runs the unit
+tests, builds the APK with the version taken from the tag, and publishes it as
+`AirTV.apk` on the Releases page:
+
+```bash
+git tag -a v1.0.1 -m "AirTV 1.0.1"
+git push origin v1.0.1
+```
+
+(The workflow can also be started by hand from the Actions tab with a version number.)
+
+Releases are signed with a **stable key**, not the throwaway debug key that Android
+generates per machine — otherwise no release could be installed over the previous one.
+The workflow reads it from three repository secrets:
+
+| Secret | Contents |
+| --- | --- |
+| `SIGNING_KEYSTORE_BASE64` | `base64 airtv-release.jks`, single line |
+| `SIGNING_KEYSTORE_PASSWORD` | keystore/key password |
+| `SIGNING_KEY_ALIAS` | `airtv` |
+
+The keystore itself is deliberately **not** in the repo (it is in `.gitignore`). Keep
+`airtv-release.jks` and its password somewhere safe: if that key is lost, no future build
+can be installed as an update over an existing one — every user would have to uninstall
+first, losing their AirPlay pairing.
+
+The workflow fails rather than falling back to a debug key if the secret is missing, so a
+release can never be published with an unstable identity.
 
 ## Licence
 

@@ -38,10 +38,35 @@ android {
         }
     }
 
+    // A stable release key, supplied by CI (or locally) through these properties. Without
+    // it every build would be signed with a throwaway debug key, and releases could never
+    // be installed as updates over one another.
+    val keystorePath = (findProperty("signingKeystore") as String?)
+        ?: System.getenv("SIGNING_KEYSTORE")
+    val keystorePassword = (findProperty("signingKeystorePassword") as String?)
+        ?: System.getenv("SIGNING_KEYSTORE_PASSWORD")
+    val keyAlias = (findProperty("signingKeyAlias") as String?)
+        ?: System.getenv("SIGNING_KEY_ALIAS") ?: "airtv"
+    val keyPassword = (findProperty("signingKeyPassword") as String?)
+        ?: System.getenv("SIGNING_KEY_PASSWORD") ?: keystorePassword
+
+    signingConfigs {
+        if (keystorePath != null && keystorePassword != null && file(keystorePath).exists()) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = keystorePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            // Falls back to the debug key for local builds with no keystore configured.
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 

@@ -7,3 +7,7 @@ app/.cxx/
 *.iml
 .idea/
 .DS_Store
+
+# release signing key — kept out of the repo, mirrored in GitHub Actions secrets
+airtv-release.jks
+.airtv-keystore-password
