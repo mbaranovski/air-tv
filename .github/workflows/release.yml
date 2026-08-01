@@ -1,6 +1,6 @@
 name: Release
 
-# Publishes a signed-with-debug-key APK as a GitHub release asset. The asset is always
+# Publishes a release-signed APK as a GitHub release asset. The asset is always
 # named AirTV.apk so that this URL keeps working for every release, which matters because
 # it has to be typed on a TV remote:
 #   https://github.com/0xb1ob/air-tv/releases/latest/download/AirTV.apk
@@ -114,5 +114,6 @@ jobs:
 
             **Install over adb:** `adb connect <tv-ip>:5555 && adb install -r AirTV.apk`
 
-            The APK is signed with the standard Android debug key, so it is for sideloading
-            only. It contains native code for arm64-v8a, armeabi-v7a and x86_64.
+            Sideload only — the APK is signed with the project's own release key, not
+            distributed through Play. Installing over a previous release keeps your pairing.
+            Contains native code for arm64-v8a, armeabi-v7a and x86_64.
