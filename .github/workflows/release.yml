@@ -3,7 +3,7 @@ name: Release
 # Publishes a signed-with-debug-key APK as a GitHub release asset. The asset is always
 # named AirTV.apk so that this URL keeps working for every release, which matters because
 # it has to be typed on a TV remote:
-#   https://github.com/mbaranovski/air-tv/releases/latest/download/AirTV.apk
+#   https://github.com/0xb1ob/air-tv/releases/latest/download/AirTV.apk
 on:
   push:
     tags:
@@ -110,7 +110,7 @@ jobs:
             **Install on the TV without a computer:** install *Downloader* (AFTVnews) from
             the Play Store, allow it to install unknown apps, and open
 
-                https://github.com/mbaranovski/air-tv/releases/latest/download/AirTV.apk
+                https://github.com/0xb1ob/air-tv/releases/latest/download/AirTV.apk
 
             **Install over adb:** `adb connect <tv-ip>:5555 && adb install -r AirTV.apk`
 

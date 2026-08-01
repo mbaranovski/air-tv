@@ -21,7 +21,7 @@ The TV downloads the APK from GitHub itself.
 3. Open Downloader and enter this URL (it always points at the newest release):
 
    ```
-   https://github.com/mbaranovski/air-tv/releases/latest/download/AirTV.apk
+   https://github.com/0xb1ob/air-tv/releases/latest/download/AirTV.apk
    ```
 
 4. It downloads, then asks to install — choose **Install**, then **Done**, and delete the
@@ -32,7 +32,7 @@ To update later, repeat with the same URL; installing over the top keeps your pa
 
 > Releases are built by GitHub Actions from a `v*` tag — see
 > [`.github/workflows/release.yml`](.github/workflows/release.yml). All releases are on the
-> [Releases page](https://github.com/mbaranovski/air-tv/releases), and `dist/AirTV.apk` in
+> [Releases page](https://github.com/0xb1ob/air-tv/releases), and `dist/AirTV.apk` in
 > this repo is a committed copy of the current build.
 
 ## Build from source
@@ -63,7 +63,7 @@ sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" \
 **Build**
 
 ```bash
-git clone https://github.com/mbaranovski/air-tv.git
+git clone https://github.com/0xb1ob/air-tv.git
 cd air-tv
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # your SDK path
 
